@@ -37,9 +37,9 @@ class Board extends Component {
                         owner = null
                     } else if (!evenCol && !evenRow){
                         owner = null
-                    } else if (rowIndex < 3) {
+                    } else if (rowIndex < 2) {
                         owner = 'player1'
-                    } else if (rowIndex >= 5) {
+                    } else if (rowIndex >= 6) {
                         owner = 'player2'
                     } else {
                         owner = null
@@ -48,7 +48,7 @@ class Board extends Component {
                     row.push({
                         owner: owner,
                         spaceColor: spaceColor,
-                        king: false,
+                        isKing: false,
                         selected: false
                     })
                     col++
@@ -87,6 +87,8 @@ class Board extends Component {
             let startingCol = prevState.activeIndex[1]
 
             let activeOwner = spaces[startingRow][startingCol].owner
+            let activePiece = spaces[startingRow][startingCol]
+
 
             let isVacant = spaces[endingRow][endingCol].owner === null
 
@@ -96,8 +98,14 @@ class Board extends Component {
 
 
             let confirmPlacement = () =>{
+                let finalRowIndex = activeOwner === 'player1' ? spaces.length - 1 : 0 
+
                 spaces[startingRow][startingCol].owner = null
                 spaces[endingRow][endingCol].owner = activeOwner
+
+                if (endingRow === finalRowIndex){
+                    spaces[endingRow][endingCol].isKing = true
+                }
             }
 
             let removePiece = (row, col) => {
@@ -112,7 +120,7 @@ class Board extends Component {
             let skippedRowIndex = (endingRow + startingRow) / 2
             let skippedColIndex = (endingCol + startingCol) / 2
             //valid skip => checks if diagonal piece is owned by enemy 
-            if (rowDifference === forwardTwo && (colDifference === 2 || colDifference === -2)) {
+            if ((rowDifference === 2 || rowDifference === -2) && (colDifference === 2 || colDifference === -2)) {
           
                 skippedSpotOwner = spaces[skippedRowIndex][skippedColIndex].owner
             }
@@ -120,13 +128,28 @@ class Board extends Component {
             let validSkip = skippedSpotOwner !== null && skippedSpotOwner !== activeOwner
 
             // movement for regular pieces, no skip
-            if (rowDifference === forwardOne && (colDifference === 1 || colDifference === -1) && isVacant){
+            if (rowDifference === forwardOne &&  Math.abs(colDifference) === 1 && isVacant){
                 confirmPlacement()
-            } // movemnet for regular pieces, skip
-            else if (rowDifference === forwardTwo && (colDifference === 2 || colDifference === -2) && isVacant && validSkip){
+            } 
+                // movement for king pieces, no skip
+           else if (activePiece.isKing && Math.abs(rowDifference) === 1 && Math.abs(colDifference) && isVacant){
+              confirmPlacement()
+          } 
+            // movemnet for regular pieces skipping
+            else if (rowDifference === forwardTwo && Math.abs(colDifference) === 2 && isVacant && validSkip){
+                removePiece(skippedRowIndex, skippedColIndex)
+                confirmPlacement()
+            } 
+            // movement for kings, skip 
+            else if (activePiece.isKing && Math.abs(rowDifference) === 2 && Math.abs(colDifference) === 2 && isVacant && validSkip){
                 removePiece(skippedRowIndex, skippedColIndex)
                 confirmPlacement()
             }
+
+            else {
+                console.log('idk whats up')
+            }
+          
 
             return spaces
        })
@@ -134,20 +157,22 @@ class Board extends Component {
     }
 
     checkForMoves = () => {
-        console.log('checking for moves')
         let { spaces } = this.state
         let moveOptions = 0
 
         spaces.forEach((row, rowIndex) => {
             row.forEach((space, colIndex) => {
                 if (space.owner === this.state.playerTurn){
+                    // goes through each piece that belongs to the player whose turn it is, checks the status of adjacent pieces 
+                    // to see if there are potential moves that can be made.
 
-                    // let topRight = spaces[rowIndex + 2][colIndex + 2]
-                    // let bottomRight = spaces[rowIndex + 2][colIndex - 2]
-                    // let bottomLeft = spaces[rowIndex - 2][colIndex - 2]
+                    let normalSkippedVectors = space.owner === 'player1' ? [[1, 1], [1, -1]] : [[-1, 1], [-1, -1]]
+                    let normalDestinationVectors = space.owner === 'player1' ? [[2, 2], [2, -2]] : [[-2, 2], [-2, -2]]
+                    // required to distinguish the directionality between players 
 
-                    let destinationVectors = [[2, 2], [2, -2], [-2, -2], [-2, 2]]
-                    let skippedVectors = [[1, 1], [1, -1], [-1, -1], [-1, 1]]
+                    let destinationVectors = space.isKing ? [[2, 2], [2, -2], [-2, -2], [-2, 2]] : normalDestinationVectors
+                    let skippedVectors = space.isKing ?  [[1, 1], [1, -1], [-1, -1], [-1, 1]] :  normalSkippedVectors
+                    // apply a check in all directions if the piece is a king, else use the regular vectors  
 
                     for (let i = 0; i < destinationVectors.length ; i++){
                     try {
@@ -158,7 +183,7 @@ class Board extends Component {
                             moveOptions++
                         } 
                     } catch {
-                        return
+                        // console.log('edge case')
                     }
                 }
                 
@@ -170,6 +195,12 @@ class Board extends Component {
         this.setState({
             moveOptions: moveOptions
         })
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if(this.state.playerTurn !== prevState.playerTurn){
+            this.checkForMoves()
+          }
     }
 
     componentDidMount(){
@@ -192,7 +223,7 @@ class Board extends Component {
         const checkerBoard = spaces.map((row, rowIndex) => {
             return row.map((spaceData, columnIndex) => {
               return <Space 
-                        key={columnIndex} 
+                        key={`${rowIndex} ${columnIndex}`} 
                         {...spaceData} 
                         playerTurn={playerTurn}
                         selectPiece={() => this.selectPiece(rowIndex,columnIndex, spaceData.owner)} 
