@@ -59,7 +59,7 @@ class Space extends Component {
               display: 'block',
               borderRadius: '50%',
               backgroundColor: pieceColor,
-              opacity: isActive ? 0.2 : 1
+              opacity: isActive ? 0.3 : 1
             }}
           />
         )}

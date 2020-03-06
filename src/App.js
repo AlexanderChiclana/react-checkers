@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { Component } from 'react';
 import './App.css';
 import Board from './Board.js'
 
-function App() {
-  return (
-    <div className="App">
-      <Board />
-    </div>
-  );
+
+
+class App extends Component {
+  render() {
+    
+    return (
+      <div>
+        <Board />
+      </div>
+    );
+  }
 }
+
 
 export default App;

@@ -14,7 +14,11 @@ class Board extends Component {
             [],
             []
         ],
+        pieceSize: 100,
         activeIndex: [],
+        turnMoves: [],
+        player1Color: 'green',
+        player2Color: 'purple',
         playerTurn: 'player1',
         moveOptions: 0
     }
@@ -60,7 +64,7 @@ class Board extends Component {
     }
 
     selectPiece = (row, col, owner) =>{
-      console.log('selecting')
+    //   console.log('selecting')    
 
         if (this.state.playerTurn === owner){
             this.setState({
@@ -82,7 +86,8 @@ class Board extends Component {
 
         this.setState(prevState => {
             let spaces = [...prevState.spaces]
-            
+            let activeIndex = [...prevState.activeIndex]
+
             let startingRow = prevState.activeIndex[0]
             let startingCol = prevState.activeIndex[1]
 
@@ -99,13 +104,19 @@ class Board extends Component {
 
             let confirmPlacement = () =>{
                 let finalRowIndex = activeOwner === 'player1' ? spaces.length - 1 : 0 
+                
+                // sets the owner after sucessful move, preserves king status 
+                spaces[endingRow][endingCol].owner = activeOwner
+                spaces[endingRow][endingCol].isKing = spaces[startingRow][startingCol].isKing 
 
                 spaces[startingRow][startingCol].owner = null
-                spaces[endingRow][endingCol].owner = activeOwner
+                spaces[startingRow][startingCol].isKing = false
 
+                // converts to king when reaches last row
                 if (endingRow === finalRowIndex){
                     spaces[endingRow][endingCol].isKing = true
                 }
+                activeIndex = []
             }
 
             let removePiece = (row, col) => {
@@ -151,7 +162,7 @@ class Board extends Component {
             }
           
 
-            return spaces
+            return {spaces, activeIndex }
        })
     //    this.checkForMoves()
     }
@@ -197,6 +208,9 @@ class Board extends Component {
         })
     }
 
+    
+
+
     componentDidUpdate(prevProps, prevState) {
         if(this.state.playerTurn !== prevState.playerTurn){
             this.checkForMoves()
@@ -216,9 +230,16 @@ class Board extends Component {
             return {playerTurn: player}
         })
     }
+    triggerHover = (event) => {
+        console.log(event.pageX, event.pageY)
+        this.setState({
+         mouseX: event.pageX,
+         mouseY: event.pageY
+        }) 
+     }
 
     render() {
-        let { spaces, activeIndex, playerTurn } = this.state
+        let { spaces, activeIndex, playerTurn, pieceSize, mouseX, mouseY, player1Color, player2Color } = this.state
 
         const checkerBoard = spaces.map((row, rowIndex) => {
             return row.map((spaceData, columnIndex) => {
@@ -239,13 +260,31 @@ class Board extends Component {
       
         return (
             <React.Fragment>
-            <div style={{
+            
+            {activeIndex.length !== 0 && <div
+               style={{
+                 width: `${pieceSize}px`,
+                 height: `${pieceSize}px`,
+                 borderRadius: '50%',
+                 backgroundColor: playerTurn === 'player1' ? player1Color : player2Color,
+                 position: 'absolute',
+                 pointerEvents: 'none',
+                 left: `calc(${mouseX}px - (${pieceSize}px / 2)`,
+                 top: `calc(${mouseY}px - (${pieceSize}px / 2)`
+               }}
+             />}
+            <div
+            
+            onMouseMove={(event)=> this.triggerHover(event)}
+            style={{
                 display: 'grid',
                 gridTemplateRows: `repeat(8, 100px)`,
                 gridTemplateColumns: `repeat(8, 100px)`
             }}>
+         
               {checkerBoard}
             </div>
+        
             <button onClick={this.changeSides}>SWITCH</button>
             </React.Fragment>
         );
