@@ -11,8 +11,11 @@ class Space extends Component {
   render() {
     let {
       spaceColor,
+      player1Color,
+      player2Color,
       activeIndex,
       selectPiece,
+      isKing,
       playerTurn,
       unselectPiece,
       movePiece,
@@ -21,7 +24,7 @@ class Space extends Component {
       col
     } = this.props
 
-    let pieceColor = owner === 'player1' ? 'green' : 'purple'
+    let pieceColor = owner === 'player1' ? player1Color : player2Color
 
     let isActive = activeIndex[0] === row && activeIndex[1] === col
 
@@ -56,12 +59,16 @@ class Space extends Component {
             style={{
               width: '100%',
               height: '100%',
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: '50%',
               backgroundColor: pieceColor,
               opacity: isActive ? 0.3 : 1
             }}
-          />
+          >
+              {isKing && 'K'}
+          </div>
         )}
       </div>
     )

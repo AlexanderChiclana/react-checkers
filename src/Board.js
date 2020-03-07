@@ -20,7 +20,7 @@ class Board extends Component {
         player1Color: 'green',
         player2Color: 'purple',
         playerTurn: 'player1',
-        moveOptions: 0
+        skipOptions: 0
     }
 
     initializeBoard = () => {
@@ -58,7 +58,7 @@ class Board extends Component {
                     col++
                  }
              })
-             console.log(spaces)
+            //  console.log(spaces)
              return spaces
         })
     }
@@ -87,6 +87,8 @@ class Board extends Component {
         this.setState(prevState => {
             let spaces = [...prevState.spaces]
             let activeIndex = [...prevState.activeIndex]
+            let skipOptions = prevState.skipOptions
+            let turnMoves = prevState.turnMoves
 
             let startingRow = prevState.activeIndex[0]
             let startingCol = prevState.activeIndex[1]
@@ -116,7 +118,10 @@ class Board extends Component {
                 if (endingRow === finalRowIndex){
                     spaces[endingRow][endingCol].isKing = true
                 }
+                turnMoves.push([endingRow, endingCol])
+                
                 activeIndex = []
+
             }
 
             let removePiece = (row, col) => {
@@ -139,11 +144,11 @@ class Board extends Component {
             let validSkip = skippedSpotOwner !== null && skippedSpotOwner !== activeOwner
 
             // movement for regular pieces, no skip
-            if (rowDifference === forwardOne &&  Math.abs(colDifference) === 1 && isVacant){
+            if (rowDifference === forwardOne &&  Math.abs(colDifference) === 1 && isVacant && !skipOptions){
                 confirmPlacement()
             } 
                 // movement for king pieces, no skip
-           else if (activePiece.isKing && Math.abs(rowDifference) === 1 && Math.abs(colDifference) && isVacant){
+           else if (activePiece.isKing && Math.abs(rowDifference) === 1 && Math.abs(colDifference) && isVacant && !skipOptions){
               confirmPlacement()
           } 
             // movemnet for regular pieces skipping
@@ -158,18 +163,38 @@ class Board extends Component {
             }
 
             else {
-                console.log('idk whats up')
+                // console.log('idk whats up')
             }
           
 
-            return {spaces, activeIndex }
+            return {spaces, activeIndex, turnMoves }
        })
-    //    this.checkForMoves()
+    //    console.log(this.state)
+       this.validateTurnDuration()
+    }
+
+    validateTurnDuration = () => {
+        // console.log('validating')
+        let { turnMoves, skipOptions } = this.state 
+        console.log(turnMoves)
+        let tempValid = true 
+        
+        this.checkForMoves() 
+
+        // if there are no avaliable skip options at all after a move change sides. 
+
+        if (!skipOptions){
+            this.changeSides()
+        } 
+        // if there are no skip options avaliable to last piece that moved change sides 
+        else if (skipOptions){
+            this.changeSides()
+        } // change sides when above conditionsa are false 
     }
 
     checkForMoves = () => {
         let { spaces } = this.state
-        let moveOptions = 0
+        let skipOptions = 0
 
         spaces.forEach((row, rowIndex) => {
             row.forEach((space, colIndex) => {
@@ -191,7 +216,7 @@ class Board extends Component {
                         let oneAwayOwner = spaces[rowIndex + skippedVectors[i][0]][colIndex + skippedVectors[i][1]].owner
 
                         if(twoAwayOwner === null && oneAwayOwner !== space.owner && oneAwayOwner !== null ){
-                            moveOptions++
+                            skipOptions++
                         } 
                     } catch {
                         // console.log('edge case')
@@ -202,9 +227,9 @@ class Board extends Component {
                 }
             })
         })
-        // console.log(moveOptions)
+        // console.log(skipOptions)
         this.setState({
-            moveOptions: moveOptions
+            skipOptions: skipOptions
         })
     }
 
@@ -212,11 +237,31 @@ class Board extends Component {
 
 
     componentDidUpdate(prevProps, prevState) {
+        
+
         if(this.state.playerTurn !== prevState.playerTurn){
+            this.setState({
+                turnMoves: []
+            })
             this.checkForMoves()
           }
-    }
 
+        //  if ([...prevState.turnMoves] !== [...this.state.turnMoves]){
+        //     let { turnMoves, skipOptions } = prevState
+        //     console.log(prevState.playerTurn)
+        //     console.log(turnMoves)
+        //     console.log(skipOptions)
+        //     if (turnMoves.length > 0 && this.state.skipOptions === 0){
+        //         this.changeSides()
+        //     }
+        //  }   
+         
+
+         // if a skip is avaliable on the first move in a turn it must be made
+ 
+        
+    }
+  
     componentDidMount(){
         this.initializeBoard()
     }
@@ -230,8 +275,9 @@ class Board extends Component {
             return {playerTurn: player}
         })
     }
+
+
     triggerHover = (event) => {
-        console.log(event.pageX, event.pageY)
         this.setState({
          mouseX: event.pageX,
          mouseY: event.pageY
@@ -251,6 +297,8 @@ class Board extends Component {
                         unselectPiece={() => this.unselectPiece()}
                         movePiece={()=> this.movePiece(rowIndex,columnIndex)}
                         checkForMoves={this.checkForMoves}
+                        player1Color={player1Color}
+                        player2Color={player2Color}
                         row={rowIndex} 
                         col={columnIndex}
                         activeIndex={activeIndex}
@@ -274,11 +322,12 @@ class Board extends Component {
                }}
              />}
             <div
-            
+
             onMouseMove={(event)=> this.triggerHover(event)}
             style={{
                 display: 'grid',
                 gridTemplateRows: `repeat(8, 100px)`,
+                cursor: activeIndex.length !== 0 && 'grabbing',
                 gridTemplateColumns: `repeat(8, 100px)`
             }}>
          
