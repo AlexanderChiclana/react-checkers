@@ -16,6 +16,8 @@ class Board extends Component {
         ],
         pieceSize: 100,
         activeIndex: [],
+        lastRow: null,
+        lastCol: null,
         turnMoves: [],
         player1Color: 'green',
         player2Color: 'purple',
@@ -89,7 +91,8 @@ class Board extends Component {
             let activeIndex = [...prevState.activeIndex]
             let skipOptions = prevState.skipOptions
             let turnMoves = prevState.turnMoves
-
+            let playerTurn = prevState.playerTurn
+         
             let startingRow = prevState.activeIndex[0]
             let startingCol = prevState.activeIndex[1]
 
@@ -100,11 +103,8 @@ class Board extends Component {
             let isVacant = spaces[endingRow][endingCol].owner === null
 
 
-            let rowDifference = endingRow - startingRow
-            let colDifference = endingCol - startingCol
 
-
-            let confirmPlacement = () =>{
+            let confirmPlacement = (didJump) =>{
                 let finalRowIndex = activeOwner === 'player1' ? spaces.length - 1 : 0 
                 
                 // sets the owner after sucessful move, preserves king status 
@@ -119,9 +119,27 @@ class Board extends Component {
                     spaces[endingRow][endingCol].isKing = true
                 }
                 turnMoves.push([endingRow, endingCol])
-                
+               
                 activeIndex = []
+                console.log(this.validateSkips(spaces, endingRow, endingCol))
 
+                if (!skipOptions){
+                    playerTurn = playerTurn === 'player1' ? 'player2': 'player1' 
+                } // if the ending position returns FALSE when validate skips is run, change sides 
+                else if (didJump && !this.validateSkips(spaces, endingRow, endingCol)){
+                    console.log('keep going')
+                    playerTurn = playerTurn === 'player1' ? 'player2': 'player1' 
+                }
+                else if (!didJump){
+                    playerTurn = playerTurn === 'player1' ? 'player2': 'player1' 
+
+                }
+                else {
+                    return
+                }
+        
+                // dont change sides when above conditionsa are false 
+            
             }
 
             let removePiece = (row, col) => {
@@ -135,6 +153,12 @@ class Board extends Component {
             let skippedSpotOwner = null
             let skippedRowIndex = (endingRow + startingRow) / 2
             let skippedColIndex = (endingCol + startingCol) / 2
+
+            
+            let rowDifference = endingRow - startingRow
+            let colDifference = endingCol - startingCol
+
+
             //valid skip => checks if diagonal piece is owned by enemy 
             if ((rowDifference === 2 || rowDifference === -2) && (colDifference === 2 || colDifference === -2)) {
           
@@ -145,6 +169,8 @@ class Board extends Component {
 
             // movement for regular pieces, no skip
             if (rowDifference === forwardOne &&  Math.abs(colDifference) === 1 && isVacant && !skipOptions){
+                // if last item in turn moves array matches active index dont allow 
+                console.log(activeIndex, turnMoves)
                 confirmPlacement()
             } 
                 // movement for king pieces, no skip
@@ -154,12 +180,12 @@ class Board extends Component {
             // movemnet for regular pieces skipping
             else if (rowDifference === forwardTwo && Math.abs(colDifference) === 2 && isVacant && validSkip){
                 removePiece(skippedRowIndex, skippedColIndex)
-                confirmPlacement()
+                confirmPlacement(true)
             } 
             // movement for kings, skip 
             else if (activePiece.isKing && Math.abs(rowDifference) === 2 && Math.abs(colDifference) === 2 && isVacant && validSkip){
                 removePiece(skippedRowIndex, skippedColIndex)
-                confirmPlacement()
+                confirmPlacement(true)
             }
 
             else {
@@ -167,17 +193,17 @@ class Board extends Component {
             }
           
 
-            return {spaces, activeIndex, turnMoves }
+            return {spaces, activeIndex, turnMoves, playerTurn  }
        })
     //    console.log(this.state)
-       this.validateTurnDuration()
+    //    this.validateTurnDuration()
     }
 
     validateTurnDuration = () => {
-        // console.log('validating')
-        let { turnMoves, skipOptions } = this.state 
-        console.log(turnMoves)
-        let tempValid = true 
+        console.log('validating')
+        let { skipOptions } = this.state 
+    
+        console.log(skipOptions)
         
         this.checkForMoves() 
 
@@ -185,11 +211,47 @@ class Board extends Component {
 
         if (!skipOptions){
             this.changeSides()
-        } 
-        // if there are no skip options avaliable to last piece that moved change sides 
+        } // if the ending position returns FALSE when validate skips is run, change sides 
         else if (skipOptions){
             this.changeSides()
-        } // change sides when above conditionsa are false 
+        }
+
+        // dont change sides when above conditionsa are false 
+        else {
+            return
+        }
+    }
+
+    validateSkips = (spaces, rowIndex, colIndex) => {
+        // let { spaces, turnMoves } = this.state
+        // console.log(turnMoves[0], turnMoves[1])
+
+        let piece = this.state.spaces[rowIndex][colIndex] 
+        let canSkip = false
+
+
+                    let normalSkippedVectors = piece.owner === 'player1' ? [[1, 1], [1, -1]] : [[-1, 1], [-1, -1]]
+                    let normalDestinationVectors = piece.owner === 'player1' ? [[2, 2], [2, -2]] : [[-2, 2], [-2, -2]]
+                    // requi        to distinguish the directionality between players 
+
+                    let destinationVectors = piece.isKing ? [[2, 2], [2, -2], [-2, -2], [-2, 2]] : normalDestinationVectors
+                    let skippedVectors = piece.isKing ?  [[1, 1], [1, -1], [-1, -1], [-1, 1]] :  normalSkippedVectors
+                    // apply a check in all directions if the piece is a king, else use the regular vectors  
+
+                    for (let i = 0; i < destinationVectors.length ; i++){
+                    try {
+                        let twoAwayOwner = spaces[rowIndex + destinationVectors[i][0]][colIndex + destinationVectors[i][1]].owner
+                        let oneAwayOwner = spaces[rowIndex + skippedVectors[i][0]][colIndex + skippedVectors[i][1]].owner
+
+                        if(twoAwayOwner === null && oneAwayOwner !== piece.owner && oneAwayOwner !== null ){
+                            canSkip = true
+                        } 
+                    } catch {
+                        // console.log('edge case')
+                    }
+                }                
+                
+        return canSkip
     }
 
     checkForMoves = () => {
@@ -240,11 +302,12 @@ class Board extends Component {
         
 
         if(this.state.playerTurn !== prevState.playerTurn){
-            this.setState({
-                turnMoves: []
-            })
+            // this.setState({
+                // turnMoves: []
+            // })
             this.checkForMoves()
           }
+        //   console.log(this.state.turnMoves.length, prevState.turnMoves.length)
 
         //  if ([...prevState.turnMoves] !== [...this.state.turnMoves]){
         //     let { turnMoves, skipOptions } = prevState
