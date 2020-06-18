@@ -59,6 +59,7 @@ class Space extends Component {
             style={{
               width: '100%',
               height: '100%',
+              fontSize: '40px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -67,7 +68,7 @@ class Space extends Component {
               opacity: isActive ? 0.3 : 1
             }}
           >
-              {isKing && 'K'}
+              {isKing && '👑'}
           </div>
         )}
       </div>
